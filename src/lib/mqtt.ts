@@ -20,7 +20,7 @@ const DEFAULT_BROKER = `ws://${window.location.hostname}:9001`;
 export type MqttMessageHandler = {
   onFeed?: (oracle: string, event: FeedEvent) => void;
   onStatus?: (oracle: string, status: PaneStatus) => void;
-  onSessions?: (sessions: any[]) => void;
+  onSessions?: (sessions: any[], node?: string) => void;
   onAsk?: (oracle: string, ask: any) => void;
   onConnect?: () => void;
   onDisconnect?: () => void;
@@ -46,10 +46,11 @@ export function connectMqtt(brokerUrl?: string, opts?: MqttMessageHandler): Mqtt
     console.log(`[mqtt] connected to ${url}`);
     handlers.onConnect?.();
 
-    // Subscribe to all oracle feeds and statuses
+    // Subscribe to oracle feeds + statuses (per-agent)
     client!.subscribe(`${PREFIX}/oracle/+/feed`);
     client!.subscribe(`${PREFIX}/oracle/+/status`);
-    client!.subscribe(`${PREFIX}/sessions`);
+    // Node-level: sessions only (not feed — oracle/+/feed covers it)
+    client!.subscribe(`${PREFIX}/node/+/sessions`);
     client!.subscribe(`${PREFIX}/asks/+`);
   });
 
@@ -66,9 +67,13 @@ export function connectMqtt(brokerUrl?: string, opts?: MqttMessageHandler): Mqtt
       else if (parts[2] === "oracle" && parts[4] === "status") {
         handlers.onStatus?.(parts[3], data.status || data);
       }
-      // maw/v1/sessions
-      else if (parts[2] === "sessions") {
-        handlers.onSessions?.(data);
+      // maw/v1/node/{name}/sessions
+      else if (parts[2] === "node" && parts[4] === "sessions") {
+        handlers.onSessions?.(data.sessions || data, parts[3]);
+      }
+      // maw/v1/node/{name}/feed (all events for a node)
+      else if (parts[2] === "node" && parts[4] === "feed") {
+        handlers.onFeed?.(data.oracle, data);
       }
       // maw/v1/asks/{name}
       else if (parts[2] === "asks") {
