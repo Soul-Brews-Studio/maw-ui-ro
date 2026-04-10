@@ -1,20 +1,12 @@
 import { useState } from "react";
 import { useFederationStore } from "./store";
 
-const TYPE_ICONS: Record<string, string> = {
-  ts: "TS",
-  wasm: "WS",
-  "wasm-shared": "WS",
-};
-
 const clean = (s: string) => s.replace(/-view$/, "").replace(/-oracle$/, "");
 
 export function PluginPanel() {
-  const { plugins, liveMessages } = useFederationStore();
+  const { liveMessages } = useFederationStore();
   const [collapsed, setCollapsed] = useState(false);
-  const [showPlugins, setShowPlugins] = useState(false);
 
-  // Collapsed: small pill
   if (collapsed) {
     return (
       <button onClick={() => setCollapsed(false)}
@@ -28,8 +20,6 @@ export function PluginPanel() {
     );
   }
 
-  const totalEvents = plugins.reduce((s, p) => s + p.events, 0);
-
   return (
     <div className="absolute bottom-4 left-4 top-[60px] w-[240px] rounded-lg border overflow-hidden flex flex-col"
       style={{
@@ -38,22 +28,14 @@ export function PluginPanel() {
         backdropFilter: "blur(12px)",
       }}>
 
-      {/* Header — click to collapse */}
       <div className="flex items-center gap-2 px-3 py-1.5 cursor-pointer hover:bg-white/[0.03]"
         onClick={() => setCollapsed(true)}>
         {liveMessages.length > 0
           ? <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse" />
           : <span className="w-1.5 h-1.5 rounded-full bg-white/10" />}
         <span className="text-[9px] font-mono text-cyan-400/60">Live</span>
-        {plugins.length > 0 && (
-          <button onClick={(e) => { e.stopPropagation(); setShowPlugins(!showPlugins); }}
-            className="text-[8px] font-mono text-white/20 ml-auto hover:text-white/40 cursor-pointer">
-            {showPlugins ? "\u2715" : `\uD83E\uDDE9 ${plugins.length}`}
-          </button>
-        )}
       </div>
 
-      {/* Live Messages */}
       <div className="flex-1 overflow-y-auto">
         {liveMessages.length > 0 ? (
           [...liveMessages].reverse().map((m, i) => {
@@ -71,33 +53,6 @@ export function PluginPanel() {
           <div className="px-3 py-2 text-[9px] font-mono text-white/15">waiting for maw hey...</div>
         )}
       </div>
-
-      {/* Plugins — toggle */}
-      {showPlugins && plugins.length > 0 && (
-        <div className="border-t" style={{ borderColor: "rgba(255,255,255,0.06)" }}>
-          <div className="flex items-center gap-2 px-3 py-1.5">
-            <span className="text-[9px]">{"\uD83E\uDDE9"}</span>
-            <span className="text-[9px] font-mono text-white/40">Plugins</span>
-            <span className="text-[8px] font-mono text-white/20 ml-auto">{totalEvents}</span>
-          </div>
-          <div className="max-h-[150px] overflow-y-auto">
-            {plugins.map((p) => (
-              <div key={p.name} className="flex items-center gap-2 px-3 py-1 hover:bg-white/[0.03]"
-                style={{ borderBottom: "1px solid rgba(255,255,255,0.03)" }}>
-                <span className="text-[8px] font-mono font-bold px-1 rounded"
-                  style={{
-                    background: p.type.startsWith("wasm") ? "rgba(155,93,229,0.2)" : "rgba(0,187,249,0.2)",
-                    color: p.type.startsWith("wasm") ? "#9b5de5" : "#00bbf9",
-                  }}>
-                  {TYPE_ICONS[p.type] || p.type}
-                </span>
-                <span className="text-[9px] font-mono text-white/40 truncate flex-1">{p.name}</span>
-                <span className="text-[8px] font-mono text-white/15">{p.events}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
     </div>
   );
 }
