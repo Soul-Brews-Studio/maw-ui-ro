@@ -4,12 +4,28 @@ import { useFederationData } from "../hooks/useFederationData";
 import { useFederationStore } from "../components/federation/store";
 import { Canvas2D } from "../components/federation/Canvas2D";
 import { Sidebar } from "../components/federation/Sidebar";
-
+import { simulate, layoutCircle, layoutGrid, layoutTree } from "../components/federation/simulation";
 import { machineColor } from "../components/federation/colors";
+
+const LAYOUTS = ["force", "circle", "grid", "tree"] as const;
 
 function App() {
   const { connected, mqttConnected } = useFederationData();
-  const { machines, agents, edges, version, plugins, showLineage, toggleLineage } = useFederationStore();
+  const { machines, agents, edges, version, plugins, showLineage, toggleLineage, layout, setLayout, setGraph, particles } = useFederationStore();
+
+  const reformat = () => {
+    const nextIdx = (LAYOUTS.indexOf(layout as any) + 1) % LAYOUTS.length;
+    const next = LAYOUTS[nextIdx];
+    const W = (window.innerWidth - 240) || 900;
+    const H = (window.innerHeight - 52) || 600;
+    const a = [...agents];
+    if (next === "circle") layoutCircle(a, W, H);
+    else if (next === "grid") layoutGrid(a, W, H);
+    else if (next === "tree") layoutTree(a, edges, W, H);
+    else simulate(a, edges, W, H);
+    setLayout(next);
+    setGraph(a, edges, particles);
+  };
 
   const totalAgents = agents.length;
   const msgCount = edges.filter(e => e.type === "message").reduce((s, e) => s + e.count, 0);
@@ -51,8 +67,13 @@ function App() {
         </div>
       </header>
 
-      <div className="flex flex-1 overflow-hidden">
+      <div className="flex flex-1 overflow-hidden relative">
         <Canvas2D />
+        <button onClick={reformat}
+          className="absolute bottom-4 left-4 px-3 py-2 rounded-lg border text-[10px] font-mono cursor-pointer hover:bg-white/[0.05] transition-colors"
+          style={{ background: "rgba(3,10,24,0.9)", borderColor: "rgba(255,255,255,0.08)", color: "rgba(0,245,212,0.5)" }}>
+          {layout === "force" ? "⚡" : layout === "circle" ? "⭕" : layout === "grid" ? "▦" : "🌳"} {layout}
+        </button>
         <Sidebar />
       </div>
     </div>
