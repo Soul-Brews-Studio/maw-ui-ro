@@ -74,6 +74,11 @@ function App() {
             style={{ background: "rgba(3,10,24,0.9)", borderColor: "rgba(255,255,255,0.08)", color: "rgba(0,245,212,0.5)" }}>
             {layout === "force" ? "\u26A1" : "\u2B55"} {layout}
           </button>
+          <button onClick={() => store.setState({ showHistoryEdges: !showHistoryEdges })}
+            className="px-3 py-2 rounded-lg border text-[10px] font-mono cursor-pointer hover:bg-white/[0.05] transition-colors"
+            style={{ background: "rgba(3,10,24,0.9)", borderColor: "rgba(255,255,255,0.08)", color: showHistoryEdges ? "rgba(0,245,212,0.5)" : "rgba(255,255,255,0.2)" }}>
+            {showHistoryEdges ? "\u2501 lines" : "\u2501 realtime"}
+          </button>
         </div>
         <Sidebar />
       </div>
