@@ -43,6 +43,7 @@ interface FederationStore {
   setHovered: (id: string | null) => void;
   setPlugins: (plugins: PluginInfo[]) => void;
   setMessageLog: (messages: MessageEntry[]) => void;
+  clearMessages: () => void;
   toggleLineage: () => void;
   setLayout: (layout: string) => void;
   handleFeedEvent: (e: FeedEvent) => void;
@@ -82,6 +83,7 @@ export const useFederationStore = create<FederationStore>((set) => ({
 
   setPlugins: (plugins) => set({ plugins }),
   setMessageLog: (messages) => set({ messageLog: messages }),
+  clearMessages: () => set({ messageLog: [], liveMessages: [] }),
   toggleLineage: () => set((s) => ({ showLineage: !s.showLineage })),
   setLayout: (layout) => set({ layout }),
 

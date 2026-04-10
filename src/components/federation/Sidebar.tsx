@@ -15,7 +15,7 @@ function timeAgo(ts: number): string {
 type Tab = "agents" | "messages";
 
 export function Sidebar() {
-  const { agents, edges, machines, statuses, selected, setSelected, liveMessages, messageLog } = useFederationStore();
+  const { agents, edges, machines, statuses, selected, setSelected, liveMessages, messageLog, clearMessages } = useFederationStore();
   const [tab, setTab] = useState<Tab>("agents");
   const prevLiveCount = useRef(liveMessages.length);
 
@@ -56,7 +56,7 @@ export function Sidebar() {
           className={`flex-1 py-1.5 text-[9px] font-mono tracking-wider cursor-pointer transition-colors flex items-center justify-center gap-1.5 ${tab === "messages" ? "text-cyan-400/70" : "text-white/20 hover:text-white/40"}`}
           style={tab === "messages" ? { borderBottom: "1px solid rgba(0,245,212,0.3)" } : {}}>
           {liveMessages.length > 0 && <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse" />}
-          MESSAGES
+          MSG
         </button>
       </div>
 
@@ -66,6 +66,10 @@ export function Sidebar() {
           /* Messages tab */
           allMessages.length > 0 ? (
             <div className="space-y-0">
+              <button onClick={clearMessages}
+                className="text-[8px] font-mono text-white/20 hover:text-white/40 cursor-pointer mb-1">
+                clear &middot; wait for realtime
+              </button>
               {allMessages.map((m, i) => {
                 const isUser = m.from === "user";
                 const fromColor = isUser ? "#fee440" : machineColor(agentMachine.get(m.from) || "");
