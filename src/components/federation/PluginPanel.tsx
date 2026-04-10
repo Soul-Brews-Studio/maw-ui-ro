@@ -7,11 +7,26 @@ const TYPE_ICONS: Record<string, string> = {
   "wasm-shared": "WS",
 };
 
+const clean = (s: string) => s.replace(/-view$/, "").replace(/-oracle$/, "");
+
 export function PluginPanel() {
   const { plugins, liveMessages } = useFederationStore();
-  const [open, setOpen] = useState(false);
+  const [collapsed, setCollapsed] = useState(false);
+  const [showPlugins, setShowPlugins] = useState(false);
 
-  if (plugins.length === 0 && liveMessages.length === 0) return null;
+  // Collapsed: small pill
+  if (collapsed) {
+    return (
+      <button onClick={() => setCollapsed(false)}
+        className="absolute bottom-4 left-4 flex items-center gap-1.5 px-2.5 py-1.5 rounded-full border cursor-pointer hover:bg-white/[0.05]"
+        style={{ background: "rgba(3,10,24,0.9)", borderColor: "rgba(255,255,255,0.08)" }}>
+        {liveMessages.length > 0
+          ? <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse" />
+          : <span className="w-1.5 h-1.5 rounded-full bg-white/10" />}
+        <span className="text-[9px] font-mono text-white/40">Live {liveMessages.length > 0 ? liveMessages.length : ""}</span>
+      </button>
+    );
+  }
 
   const totalEvents = plugins.reduce((s, p) => s + p.events, 0);
 
@@ -23,24 +38,26 @@ export function PluginPanel() {
         backdropFilter: "blur(12px)",
       }}>
 
-      {/* Live Messages — always visible */}
-      <div className="flex items-center gap-2 px-3 py-1.5">
+      {/* Header — click to collapse */}
+      <div className="flex items-center gap-2 px-3 py-1.5 cursor-pointer hover:bg-white/[0.03]"
+        onClick={() => setCollapsed(true)}>
         {liveMessages.length > 0
           ? <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse" />
           : <span className="w-1.5 h-1.5 rounded-full bg-white/10" />}
         <span className="text-[9px] font-mono text-cyan-400/60">Live</span>
         {plugins.length > 0 && (
-          <button onClick={() => setOpen(!open)}
+          <button onClick={(e) => { e.stopPropagation(); setShowPlugins(!showPlugins); }}
             className="text-[8px] font-mono text-white/20 ml-auto hover:text-white/40 cursor-pointer">
-            {open ? "\u2715" : `\uD83E\uDDE9 ${plugins.length}`}
+            {showPlugins ? "\u2715" : `\uD83E\uDDE9 ${plugins.length}`}
           </button>
         )}
       </div>
+
+      {/* Live Messages */}
       <div className="flex-1 overflow-y-auto">
         {liveMessages.length > 0 ? (
           [...liveMessages].reverse().map((m, i) => {
             const age = Math.floor((Date.now() - m.ts) / 1000);
-            const clean = (s: string) => s.replace(/-view$/, "").replace(/-oracle$/, "");
             return (
               <div key={i} className="flex items-center gap-1.5 px-3 py-0.5 text-[9px] font-mono">
                 <span className="text-cyan-400/60">{clean(m.from)}</span>
@@ -55,8 +72,8 @@ export function PluginPanel() {
         )}
       </div>
 
-      {/* Plugins — only when expanded */}
-      {open && plugins.length > 0 && (
+      {/* Plugins — toggle */}
+      {showPlugins && plugins.length > 0 && (
         <div className="border-t" style={{ borderColor: "rgba(255,255,255,0.06)" }}>
           <div className="flex items-center gap-2 px-3 py-1.5">
             <span className="text-[9px]">{"\uD83E\uDDE9"}</span>
