@@ -36,7 +36,7 @@ export function PluginPanel() {
         <span className="text-[9px] font-mono text-cyan-400/60">Live</span>
       </div>
 
-      <div className="flex-1 overflow-y-auto">
+      <div className="overflow-y-auto">
         {liveMessages.length > 0 ? (
           [...liveMessages].reverse().map((m, i) => {
             const age = Math.floor((Date.now() - m.ts) / 1000);
