@@ -84,20 +84,25 @@ export const useFederationStore = create<FederationStore>((set) => ({
   setHovered: (id) => set({ hovered: id }),
 
   setPlugins: (plugins) => set({ plugins }),
-  setMessageLog: (messages) => set({ messageLog: messages }),
+  setMessageLog: (messages) => set((s) => {
+    // Keep live entries (UserPromptSubmit etc), merge with API history
+    const liveEntries = s.messageLog.filter(m => m.live);
+    return { messageLog: [...liveEntries, ...messages].sort((a, b) => b.ts - a.ts).slice(0, 200) };
+  }),
   clearMessages: () => set({ messageLog: [], liveMessages: [] }),
   toggleLineage: () => set((s) => ({ showLineage: !s.showLineage })),
   setLayout: (layout) => set({ layout }),
 
   handleFeedEvent: (e) => set((s) => {
     const updates: Partial<FederationStore> = {};
+    const name = e.oracle.replace(/-oracle$/, "").replace(/-view$/, "");
 
     if (BUSY_EVENTS.has(e.event)) {
-      updates.statuses = { ...s.statuses, [e.oracle]: "busy" };
-      updates.flashes = { ...s.flashes, [e.oracle]: Date.now() };
+      updates.statuses = { ...s.statuses, [name]: "busy", [e.oracle]: "busy" };
+      updates.flashes = { ...s.flashes, [name]: Date.now(), [e.oracle]: Date.now() };
     }
     if (STOP_EVENTS.has(e.event)) {
-      updates.statuses = { ...s.statuses, [e.oracle]: "ready" };
+      updates.statuses = { ...s.statuses, [name]: "ready", [e.oracle]: "ready" };
     }
 
     // Show UserPromptSubmit in message log as "user → oracle" (dedupe within 3s)
