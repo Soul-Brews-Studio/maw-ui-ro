@@ -1,11 +1,13 @@
 import { useState, useCallback, useRef, useEffect, useMemo } from "react";
-import type { Session, AgentState, PaneStatus, AgentEvent } from "../lib/types";
+import type { Session, AgentState, AgentEvent } from "../lib/types";
 import type { Team } from "../components/TeamPanel";
 import { stripAnsi } from "../lib/ansi";
 import { agentSortKey } from "../lib/constants";
 import { playWakeSound } from "../lib/sounds";
 import { useFleetStore } from "../lib/store";
-import { activeOracles, describeActivity, type FeedEvent, type FeedEventType } from "../lib/feed";
+import { useFeedStatusStore } from "../lib/feedStatusStore";
+import { usePreviewStore } from "../lib/previewStore";
+import { activeOracles, type FeedEvent, type FeedEventType } from "../lib/feed";
 import type { AskType } from "../lib/types";
 
 const BUSY_TIMEOUT = 15_000; // 15s without feed → ready
@@ -13,7 +15,6 @@ const IDLE_TIMEOUT = 60_000; // 60s without feed → idle
 
 export function useSessions() {
   const [sessions, setSessions] = useState<Session[]>([]);
-  const [captureData, setCaptureData] = useState<Record<string, { preview: string; status: PaneStatus }>>({});
   const sessionsRef = useRef(sessions);
   sessionsRef.current = sessions;
 
@@ -51,19 +52,17 @@ export function useSessions() {
   const FEED_BUSY_EVENTS = new Set<FeedEventType>(["PreToolUse", "PostToolUse", "UserPromptSubmit", "SubagentStart", "PostToolUseFailure"]);
   const FEED_STOP_EVENTS = new Set<FeedEventType>(["Stop", "SessionEnd", "TaskCompleted", "Notification"]);
 
-  /** Resolve feed event → agent. Uses project field for worktree-aware matching (case-insensitive). */
+  /** Resolve feed event → agent. Uses project field for worktree-aware matching (case-insensitive).
+   *  KEY: worktree events NEVER fall back to main oracle window — prevents cross-contamination. */
   const resolveAgentFromFeed = useCallback((event: FeedEvent): AgentState | undefined => {
-    // project like "hermes-oracle.wt-1-bitkub" or "homelab-wt-statusline" → window name "hermes-bitkub" / "homekeeper-statusline"
     const project = event.project;
-    // Match both formats: ".wt-N-name" (old) and "-wt-name" (new, no digit)
     const wtMatch = project.match(/[.-]wt-(?:\d+-)?(.+)$/);
     if (wtMatch) {
       const windowName = `${event.oracle}-${wtMatch[1]}`.toLowerCase();
-      const agent = agentsRef.current.find(a => a.name.toLowerCase() === windowName);
-      if (agent) return agent;
+      // If worktree event but no matching window, return undefined — do NOT fall back to main
+      return agentsRef.current.find(a => a.name.toLowerCase() === windowName);
     }
-    // Fallback: match by oracle name (main window)
-    // Handle both formats: oracle="neo" → "neo-oracle", oracle="calliope-oracle" → "calliope-oracle"
+    // Only non-worktree events match by oracle name (main window)
     const oracleLower = event.oracle.toLowerCase();
     const oracleMain = oracleLower.endsWith("-oracle") ? oracleLower : `${oracleLower}-oracle`;
     return agentsRef.current.find(a => a.name.toLowerCase() === oracleMain)
@@ -75,32 +74,31 @@ export function useSessions() {
     if (!agent) return;
 
     const target = agent.target;
+    const { setStatus, getStatus } = useFeedStatusStore.getState();
 
     feedLastEvent.current[target] = event.event;
 
     if (FEED_BUSY_EVENTS.has(event.event)) {
       feedLastSeen.current[target] = Date.now();
-      setCaptureData(prev => {
-        const existing = prev[target];
-        if (existing?.status === "busy") return prev;
+      const currentStatus = getStatus(target);
+      if (currentStatus !== "busy") {
         // Play per-oracle wake sound on transition to busy (10s cooldown)
         const now = Date.now();
         if (now - lastSoundTime.current > 10_000) {
           lastSoundTime.current = now;
           playWakeSound(agent.name);
         }
-        if (existing && existing.status !== "busy") addEvent(target, "status", `${existing.status} → busy`);
+        addEvent(target, "status", `${currentStatus} → busy`);
         clearSlept(target);
-        return { ...prev, [target]: { preview: existing?.preview || "", status: "busy" } };
-      });
+        setStatus(target, "busy");
+      }
     } else if (FEED_STOP_EVENTS.has(event.event)) {
       feedLastSeen.current[target] = 0; // mark stopped
-      setCaptureData(prev => {
-        const existing = prev[target];
-        if (existing?.status === "ready") return prev;
-        if (existing && existing.status !== "ready") addEvent(target, "status", `${existing.status} → ready`);
-        return { ...prev, [target]: { preview: existing?.preview || "", status: "ready" } };
-      });
+      const currentStatus = getStatus(target);
+      if (currentStatus !== "ready") {
+        addEvent(target, "status", `${currentStatus} → ready`);
+        setStatus(target, "ready");
+      }
     }
   }, [addEvent, clearSlept, resolveAgentFromFeed]);
 
@@ -108,50 +106,46 @@ export function useSessions() {
   useEffect(() => {
     const interval = setInterval(() => {
       const now = Date.now();
-      setCaptureData(prev => {
-        let next = prev;
-        for (const agent of agentsRef.current) {
-          const lastSeen = feedLastSeen.current[agent.target] || 0;
-          const existing = prev[agent.target];
-          if (!existing) continue;
+      const { statuses, setStatus } = useFeedStatusStore.getState();
+      for (const agent of agentsRef.current) {
+        const lastSeen = feedLastSeen.current[agent.target] || 0;
+        const status = statuses[agent.target];
+        if (!status) continue;
 
-          // Don't decay busy→ready if agent is in a tool call (PreToolUse without PostToolUse)
-          const lastEvt = feedLastEvent.current[agent.target];
-          const inToolCall = lastEvt === "PreToolUse" || lastEvt === "SubagentStart";
-          if (existing.status === "busy" && lastSeen > 0 && now - lastSeen > BUSY_TIMEOUT && !inToolCall) {
-            if (next === prev) next = { ...prev };
-            next[agent.target] = { ...existing, status: "ready" };
-          } else if (existing.status === "ready" && (lastSeen === 0 || now - lastSeen > IDLE_TIMEOUT)) {
-            if (next === prev) next = { ...prev };
-            next[agent.target] = { ...existing, status: "idle" };
-          }
+        const lastEvt = feedLastEvent.current[agent.target];
+        const inToolCall = lastEvt === "PreToolUse" || lastEvt === "SubagentStart";
+        if (status === "busy" && lastSeen > 0 && now - lastSeen > BUSY_TIMEOUT && !inToolCall) {
+          setStatus(agent.target, "ready");
+        } else if (status === "ready" && (lastSeen === 0 || now - lastSeen > IDLE_TIMEOUT)) {
+          setStatus(agent.target, "idle");
         }
-        return next;
-      });
+      }
     }, 5000);
     return () => clearInterval(interval);
   }, []);
 
   // --- Ask detection from feed events ---
   const ASK_RESUME_EVENTS = new Set<FeedEventType>(["PreToolUse", "SubagentStart", "UserPromptSubmit"]);
-  // Store last Stop message per oracle — Stop fires before Notification, carries the real question
   const lastStopMessage = useRef<Record<string, string>>({});
+  const lastAskAdded = useRef<Record<string, number>>({}); // cooldown: oracle → timestamp
 
   const detectAsk = useCallback((event: FeedEvent) => {
     const { addAsk, dismissByOracle } = useFleetStore.getState();
     const agent = resolveAgentFromFeed(event);
 
-    // Auto-dismiss: agent resumed on its own
     if (ASK_RESUME_EVENTS.has(event.event)) {
       const name = agent?.name || event.oracle;
-      dismissByOracle(name);
+      // Cooldown: don't dismiss asks added in the last 5s (prevents blink race)
+      const addedAt = lastAskAdded.current[name] || 0;
+      if (Date.now() - addedAt > 5000) {
+        dismissByOracle(name);
+      }
       delete lastStopMessage.current[name];
       return;
     }
 
     const oracleName = agent?.name || event.oracle;
 
-    // Capture Stop message — this has the actual question text
     if (event.event === "Stop" && event.message.trim()) {
       lastStopMessage.current[oracleName] = event.message.trim();
     }
@@ -163,7 +157,6 @@ export function useSessions() {
       else if (msg.includes("needs your attention") || msg.includes("attention")) askType = "attention";
       else if (msg.includes("needs your approval") || msg.includes("approval")) askType = "plan";
       if (askType) {
-        // Find the real question: check ref first, then search feed history for last Stop from this oracle
         let stopMsg = lastStopMessage.current[oracleName];
         if (!stopMsg) {
           for (let i = feedEventsRef.current.length - 1; i >= 0; i--) {
@@ -176,6 +169,7 @@ export function useSessions() {
         }
         const displayMessage = stopMsg && stopMsg.length > event.message.length ? stopMsg : event.message;
         addAsk({ oracle: oracleName, target: agent?.target || "", type: askType, message: displayMessage });
+        lastAskAdded.current[oracleName] = Date.now();
         delete lastStopMessage.current[oracleName];
       }
     }
@@ -183,7 +177,6 @@ export function useSessions() {
 
   const handleMessage = useCallback((data: any) => {
     if (data.type === "sessions") {
-      // Filter out PTY helper sessions (maw-pty-*) — they're internal
       setSessions((data.sessions as Session[]).filter(s => !s.name.startsWith("maw-pty-")));
     } else if (data.type === "recent") {
       const agents: { target: string; name: string; session: string }[] = data.agents || [];
@@ -199,7 +192,6 @@ export function useSessions() {
     } else if (data.type === "feed-history") {
       const events = (data.events as FeedEvent[]).slice(-MAX_FEED);
       setFeedEvents(events);
-      // Set initial status + populate recentMap from feed events
       for (const e of events) {
         updateStatusFromFeed(e);
         if (FEED_BUSY_EVENTS.has(e.event as FeedEventType)) {
@@ -210,36 +202,30 @@ export function useSessions() {
     } else if (data.type === "teams") {
       setTeams(data.teams || []);
     } else if (data.type === "previews") {
-      const previews: Record<string, string> = data.data;
-      setCaptureData((prev) => {
-        let next = prev;
-        for (const [target, raw] of Object.entries(previews)) {
-          const text = stripAnsi(raw);
-          const lines = text.split("\n").filter((l: string) => l.trim());
-          // Prefer a line showing "Compacting" (from /compact) over the default last line (prompt)
-          const compactingLine = lines.find((l: string) => l.toLowerCase().includes("compacting"));
-          const preview = (compactingLine || lines[lines.length - 1] || "").slice(0, 120);
-          const existing = next[target];
-          if (!existing || existing.preview !== preview) {
-            if (next === prev) next = { ...prev };
-            next[target] = { preview, status: existing?.status || "idle" };
-          }
-        }
-        return next;
-      });
+      // Write to preview store (separate from status — no cascade to avatars)
+      const rawPreviews: Record<string, string> = data.data;
+      const cleaned: Record<string, string> = {};
+      for (const [target, raw] of Object.entries(rawPreviews)) {
+        const text = stripAnsi(raw);
+        const lines = text.split("\n").filter((l: string) => l.trim());
+        const compactingLine = lines.find((l: string) => l.toLowerCase().includes("compacting"));
+        cleaned[target] = (compactingLine || lines[lines.length - 1] || "").slice(0, 120);
+      }
+      usePreviewStore.getState().setPreviews(cleaned);
     } else if (data.type === "action-ok") {
       if (data.action === "sleep") markSlept(data.target);
       else if (data.action === "wake") clearSlept(data.target);
     }
   }, []);
 
-  // Derive flat agent list
+  // Subscribe to statuses — agents re-derive on status change
+  // Blink prevented by stable useCallback props (not by removing reactivity)
+  const statuses = useFeedStatusStore((s) => s.statuses);
+
   const agents: AgentState[] = useMemo(() => {
     const list = sessions.flatMap((s) =>
       s.windows.map((w) => {
         const key = `${s.name}:${w.index}`;
-        const cd = captureData[key];
-        // Derive project from cwd (basename, detect worktree)
         let project: string | undefined;
         if (w.cwd) {
           const base = w.cwd.split("/").pop() || "";
@@ -252,8 +238,8 @@ export function useSessions() {
           session: s.name,
           windowIndex: w.index,
           active: w.active,
-          preview: cd?.preview || "",
-          status: cd?.status || "idle",
+          preview: "", // read from usePreviewStore at component level
+          status: statuses[key] || "idle",
           project,
           cwd: w.cwd,
           source: s.source && s.source !== "local" ? s.source : undefined,
@@ -263,7 +249,7 @@ export function useSessions() {
     list.sort((a, b) => agentSortKey(a.name) - agentSortKey(b.name));
     agentsRef.current = list;
     return list;
-  }, [sessions, captureData]);
+  }, [sessions, statuses]);
 
   const feedActive = useMemo(() => activeOracles(feedEvents, 5 * 60_000), [feedEvents]);
 
@@ -271,7 +257,6 @@ export function useSessions() {
     const map = new Map<string, FeedEvent[]>();
     for (let i = feedEvents.length - 1; i >= 0; i--) {
       const e = feedEvents[i];
-      // Resolve to specific agent (worktree-aware) instead of raw oracle name
       const agent = agentsRef.current.length > 0 ? resolveAgentFromFeed(e) : undefined;
       const key = agent ? agent.name.replace(/-oracle$/, "") : e.oracle;
       const arr = map.get(key) || [];

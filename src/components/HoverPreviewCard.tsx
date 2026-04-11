@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback, memo } from "react";
 import { ansiToHtml, processCapture } from "../lib/ansi";
 import { agentColor, PREVIEW_CARD } from "../lib/constants";
 import { apiUrl } from "../lib/api";
+import { useAgentPreview } from "../lib/previewStore";
 import type { AgentState, AgentEvent } from "../lib/types";
 
 interface HoverPreviewCardProps {
@@ -61,6 +62,7 @@ export const HoverPreviewCard = memo(function HoverPreviewCard({
   const color = agentColor(agent.name);
   const displayName = agent.name.replace(/-oracle$/, "").replace(/-/g, " ");
   const statusColor = STATUS_COLORS[agent.status] || "#666";
+  const agentPreview = useAgentPreview(agent.target);
 
   // Sync prevInputRef when external buffer initializes
   useEffect(() => {
@@ -553,7 +555,7 @@ export const HoverPreviewCard = memo(function HoverPreviewCard({
         </div>
       ) : (
         <div className="px-3 py-2 bg-[#0e0e18] border-t border-white/[0.06] font-mono text-[9px] text-white/30 truncate">
-          {agent.preview || "..."}
+          {agentPreview || "..."}
         </div>
       )}
 

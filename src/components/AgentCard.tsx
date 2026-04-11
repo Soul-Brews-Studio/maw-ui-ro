@@ -1,6 +1,7 @@
 import { memo, useState } from "react";
 import { AgentAvatar } from "./AgentAvatar";
 import type { AgentState } from "../lib/types";
+import { useAgentPreview } from "../lib/previewStore";
 
 interface AgentCardProps {
   agent: AgentState;
@@ -10,6 +11,7 @@ interface AgentCardProps {
 
 export const AgentCard = memo(function AgentCard({ agent, accent, onClick }: AgentCardProps) {
   const [hovered, setHovered] = useState(false);
+  const preview = useAgentPreview(agent.target);
   const displayName = agent.name.replace(/-oracle$/, "").replace(/-/g, " ");
   return (
     <div
@@ -23,7 +25,7 @@ export const AgentCard = memo(function AgentCard({ agent, accent, onClick }: Age
           name={agent.name}
           target={agent.target}
           status={agent.status}
-          preview={agent.preview}
+          preview={preview}
           accent={accent}
           onClick={onClick}
         />
@@ -49,9 +51,9 @@ export const AgentCard = memo(function AgentCard({ agent, accent, onClick }: Age
           <div className="text-xs text-white/70 mt-0.5">
             {agent.status} · {agent.target}
           </div>
-          {agent.preview && (
+          {preview && (
             <div className="text-[10px] text-white/50 mt-1 max-w-[250px] truncate">
-              {agent.preview.slice(0, 60)}
+              {preview.slice(0, 60)}
             </div>
           )}
           {/* Arrow */}

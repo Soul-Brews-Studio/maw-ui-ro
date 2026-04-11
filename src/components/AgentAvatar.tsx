@@ -1,5 +1,6 @@
 import { memo } from "react";
 import { agentColor, agentIcon } from "../lib/constants";
+import { useAgentPreview } from "../lib/previewStore";
 import type { PaneStatus } from "../lib/types";
 
 const STATUS_FX: Record<PaneStatus, { color: string; aura: number; sparkle: boolean; typing: boolean }> = {
@@ -12,13 +13,15 @@ interface AgentAvatarProps {
   name: string;
   target: string;
   status: PaneStatus;
-  preview: string;
+  preview?: string;  // optional — falls back to preview store
   accent: string;
   activity?: string;
   onClick: () => void;
 }
 
-export const AgentAvatar = memo(function AgentAvatar({ name, target, status, preview, accent, activity, onClick }: AgentAvatarProps) {
+export const AgentAvatar = memo(function AgentAvatar({ name, target, status, preview: previewProp, accent, activity, onClick }: AgentAvatarProps) {
+  const storePreview = useAgentPreview(target);
+  const preview = previewProp || storePreview;
   const color = agentColor(name);
   const fx = STATUS_FX[status];
   const filterId = `glow-${target.replace(/[^a-z0-9]/gi, "-")}`;

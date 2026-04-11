@@ -6,6 +6,7 @@ import type { FeedLogEntry } from "./FleetGrid";
 import type { Team } from "./TeamPanel";
 import { COLOR_MAP } from "./TeamPanel";
 import { guessCommand } from "../lib/constants";
+import { useAgentPreview } from "../lib/previewStore";
 
 const isTouch = typeof window !== "undefined" && ("ontouchstart" in window || navigator.maxTouchPoints > 0);
 
@@ -81,6 +82,7 @@ function AgentInfo({ agent, isBusy, displayName, accent, agoLabel, feedLog, team
   agent: AgentState; isBusy: boolean; displayName: string; accent: string;
   agoLabel?: string; feedLog?: FeedLogEntry[] | null; teams?: Team[];
 }) {
+  const preview = useAgentPreview(agent.target);
   // Match team by: 1) exact member name, 2) cwd path match
   const agentTeam = teams?.find(t => t.members.some(m =>
     m.name === agent.name ||
@@ -152,9 +154,9 @@ function AgentInfo({ agent, isBusy, displayName, accent, agoLabel, feedLog, team
           </span>
         )}
       </div>
-      {agent.preview && (
+      {preview && (
         <span className="text-[13px] truncate" style={{ color: "#64748B" }}>
-          {agent.preview.slice(0, 80)}
+          {preview.slice(0, 80)}
         </span>
       )}
       {feedLog && feedLog.length > 0 && (
@@ -250,6 +252,7 @@ export const AgentRow = memo(function AgentRow({
   feedLog, slept, alignWidth, observe, showPreview, hidePreview, onAgentClick, send, onSendDone, teams,
 }: AgentRowProps) {
   const isBusy = agent.status === "busy";
+  const preview = useAgentPreview(agent.target);
   const displayName = agent.name.replace(/-oracle$/, "").replace(/-/g, " ");
   const [inputOpen, setInputOpen] = useState(false);
   const [text, setText] = useState("");
@@ -362,7 +365,7 @@ export const AgentRow = memo(function AgentRow({
           onMouseLeave={isTouch ? undefined : () => hidePreview()}
         >
           <svg viewBox="-40 -50 80 80" width={featured ? 96 : 56} height={featured ? 96 : 56} overflow="visible">
-            <AgentAvatar name={agent.name} target={agent.target} status={agent.status} preview={agent.preview} accent={accent} activity={feedLog?.[0]?.text} onClick={() => {}} />
+            <AgentAvatar name={agent.name} target={agent.target} status={agent.status} preview={preview} accent={accent} activity={feedLog?.[0]?.text} onClick={() => {}} />
           </svg>
         </div>
 

@@ -26,7 +26,7 @@ export class ErrorBoundary extends Component<Props, State> {
     return (
       <div
         className="fixed inset-0 flex items-center justify-center z-[9999]"
-        style={{ background: "#0a0a0f" }}
+        style={{ background: "#020208" }}
       >
         <div className="text-center max-w-md px-6">
           <div className="text-6xl mb-6">💥</div>

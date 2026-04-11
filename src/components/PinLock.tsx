@@ -4,7 +4,7 @@ import { apiUrl } from "../lib/api";
 const STORAGE_KEY = "office-unlocked";
 
 export function PinLock({ children }: { children: React.ReactNode }) {
-  const [unlocked, setUnlocked] = useState(() => sessionStorage.getItem(STORAGE_KEY) === "1");
+  const [unlocked, setUnlocked] = useState(() => localStorage.getItem(STORAGE_KEY) === "1");
   const [pinLength, setPinLength] = useState(4);
   const [enabled, setEnabled] = useState(true);
   const [loading, setLoading] = useState(true);
@@ -42,7 +42,7 @@ export function PinLock({ children }: { children: React.ReactNode }) {
           .then(r => r.json())
           .then(data => {
             if (data.ok) {
-              sessionStorage.setItem(STORAGE_KEY, "1");
+              localStorage.setItem(STORAGE_KEY, "1");
               window.location.hash = "mission";
               setUnlocked(true);
             } else {
@@ -76,12 +76,12 @@ export function PinLock({ children }: { children: React.ReactNode }) {
   }, [unlocked, handleDigit, handleDelete]);
 
   if (unlocked) return <>{children}</>;
-  if (loading) return <div className="fixed inset-0" style={{ background: "#0a0a0f" }} />;
+  if (loading) return <div className="fixed inset-0" style={{ background: "#020208" }} />;
 
   const BUTTONS = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "", "0", "⌫"];
 
   return (
-    <div className="fixed inset-0 flex flex-col items-center justify-center" style={{ background: "#0a0a0f" }}>
+    <div className="fixed inset-0 flex flex-col items-center justify-center" style={{ background: "#020208" }}>
       <div className="mb-8 text-center">
         <h1 className="text-4xl text-cyan-400">ψ</h1>
         <p className="text-xs text-white/20 mt-2 font-mono">Enter PIN</p>

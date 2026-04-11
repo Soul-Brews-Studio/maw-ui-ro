@@ -1,7 +1,7 @@
 @import "tailwindcss";
 
 body {
-  background: #0a0a0f;
+  background: #020208;
   color: #e0e0e0;
   font-family: -apple-system, BlinkMacSystemFont, 'Noto Sans Thai', 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
   overflow-x: hidden;
@@ -11,7 +11,7 @@ body {
 button, [role="button"], a[href], summary { cursor: pointer; }
 
 ::-webkit-scrollbar { width: 6px; }
-::-webkit-scrollbar-track { background: #0a0a0f; }
+::-webkit-scrollbar-track { background: #020208; }
 ::-webkit-scrollbar-thumb { background: #2a2a3e; border-radius: 3px; }
 
 /* Shared */

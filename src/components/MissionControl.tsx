@@ -38,7 +38,7 @@ export const MissionControl = memo(function MissionControl({
     <div
       ref={mc.containerRef}
       className="relative w-full overflow-hidden"
-      style={{ background: "#0a0a0f", height: "calc(100vh - 60px)", cursor: mc.isPanning ? "grabbing" : "default" }}
+      style={{ background: "#020208", height: "calc(100vh - 60px)", cursor: mc.isPanning ? "grabbing" : "default" }}
       onMouseDown={mc.onMouseDown}
       onMouseMove={mc.onMouseMove}
       onMouseUp={mc.onMouseUp}
@@ -54,7 +54,7 @@ export const MissionControl = memo(function MissionControl({
         <defs>
           <radialGradient id="mc-bg-glow" cx="50%" cy="50%" r="50%">
             <stop offset="0%" stopColor="#1a1a3e" stopOpacity={0.3} />
-            <stop offset="100%" stopColor="#0a0a0f" stopOpacity={0} />
+            <stop offset="100%" stopColor="#020208" stopOpacity={0} />
           </radialGradient>
           <filter id="mc-glow">
             <feGaussianBlur in="SourceGraphic" stdDeviation="8" />
