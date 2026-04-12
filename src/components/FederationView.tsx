@@ -23,16 +23,21 @@ export default function FederationView({ onSendMessage }: FederationViewProps) {
   if (!available) {
     return (
       <div className="max-w-xl mx-auto py-12 text-center">
-        <div className="text-white/30 text-sm mb-2">Federation API not available</div>
-        <div className="text-white/20 text-xs mb-4">
-          Waiting for <span className="text-white/40 font-mono">#10</span> backend endpoints.
-          The UI is ready — will auto-connect when API is deployed.
+        <div className="text-white/30 text-sm mb-2">No maw-js backend connected</div>
+        <div className="text-white/20 text-xs mb-4 space-y-1">
+          <p>This page needs a running maw-js to show federation data.</p>
+          <p className="text-white/30">Try one of:</p>
+          <div className="text-left inline-block text-[11px] space-y-1 mt-2">
+            <p><span className="text-cyan-400/60 font-mono">http://localhost:3456/#federation</span> — local maw-js (Shape A)</p>
+            <p><span className="text-cyan-400/60 font-mono">?host=http://localhost:3456</span> — via tunnel to your node</p>
+            <p><span className="text-white/30 font-mono">maw ui --tunnel &lt;peer&gt;</span> — print the SSH command</p>
+          </div>
         </div>
         <button
           onClick={refresh}
           className="px-3 py-1.5 text-xs rounded border border-white/10 text-white/40 hover:text-white/60 hover:border-white/20 transition-colors"
         >
-          Retry connection
+          Retry
         </button>
       </div>
     );
