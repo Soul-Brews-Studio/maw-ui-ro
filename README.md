@@ -1,35 +1,82 @@
 # maw-ui
 
-ARRA Office frontend — the unified dashboard for Oracle fleet management.
+The living lens of the oracle mesh. Federation visualization + fleet dashboard for [maw-js](https://github.com/Soul-Brews-Studio/maw-js).
 
-## Modules
-
-| Module | Description |
-|--------|-------------|
-| `src/` | React + Zustand app — fleet grid, mission control, terminal, dashboard, chat |
-| `office-8bit` | Rust/WASM retro pixel UI (8-bit mode) |
-| `shrine/` | Cloudflare Worker — static shrine page |
-| `wasm-vm/` | Rust WASM VM — sandboxed code execution |
-| `wasm-office/` | Rust WASM office runtime |
-| `src/wasm-vm/` | WASM VM bindings (JS/TS glue) |
-
-## Dev
+## Quick Start
 
 ```sh
-bun install
-bun run dev        # Vite dev server on :5173
-bun run build      # Production build → dist/
+# Option A: Install packed dist (Shape A — serves on maw-js :3456)
+maw ui --install
+
+# Option B: Dev mode (vite HMR on :5173, proxy to maw-js :3456)
+maw ui --dev
+
+# Option C: Hosted
+# https://god.buildwithoracle.com/federation_2d?host=<your-node>
 ```
 
-## Deploy
+## What's Inside
 
-```sh
-bun run build
-cp -r dist/* /path/to/maw-js/ui/office/
-```
+| View | Route | What it shows |
+|------|-------|---------------|
+| Federation 2D | `federation_2d.html` | Canvas force-graph of all nodes + agents, live message trails, deep ocean theme |
+| Federation 3D | `federation.html` | Three.js immersive view with bloom + particle effects |
+| Federation List | `#federation` | Oracle list grouped by node, peer latency, reachability dots |
+| Office | `index.html` | Agent grid — status, PTY terminals, WebSocket feed |
+| Fleet | `fleet.html` | Fleet-wide view — all sessions across all nodes |
+| Dashboard | `dashboard.html` | Overview metrics + agent status |
+| Terminal | `terminal.html` | Full xterm.js terminal per agent |
+| Mission | `mission.html` | Mission control — active tasks + progress |
+| Chat | `chat.html` | Cross-agent messaging |
+| Config | `config.html` | Fleet configuration viewer |
+| Inbox | `inbox.html` | Oracle inbox — messages + handoffs |
+| Workspace | `workspace.html` | Multi-agent workspace with send/action |
 
 ## Architecture
 
-- **State**: Zustand stores — `feedStatusStore` (agent status), `previewStore` (terminal previews), `fleetStore` (UI prefs)
-- **Data**: WebSocket feed from maw-js backend (:3456) — no HTTP polling
-- **Views**: mission, office, fleet, dashboard, terminal, orbital, vs, config, chat, worktrees, teams
+- **State**: Zustand stores — agent status, terminal previews, fleet prefs
+- **Data**: WebSocket feed from maw-js backend (`:3456`) — real-time, no polling
+- **Routing**: `?host=<peer>` query param points any page at any maw-js node ([drizzle.studio pattern](https://local.drizzle.studio))
+- **Build**: Vite multi-page — each `.html` is a standalone entry point
+
+## Client Helpers (`src/lib/`)
+
+| File | Purpose |
+|------|---------|
+| `api.ts` | `apiUrl()` / `wsUrl()` — centralized `?host=` resolution |
+| `peerExecClient.ts` | Browser client for `POST /api/peer/exec` (signed command relay) |
+| `peerProxyClient.ts` | Browser client for `POST /api/proxy` (REST relay for HTTP-LAN peers) |
+| `peerConnection.ts` | Classify peer connectivity: same-origin / direct / mixed-content-blocked / invalid |
+| `peerConnectionBanner.ts` | Derive UI error banner from peer classification |
+
+## Deploy
+
+### Shape A — packed serve (recommended)
+
+```sh
+maw ui --install          # downloads dist from GitHub Releases → ~/.maw/ui/dist/
+                          # maw-js serves it alongside /api on :3456
+                          # one port, one process, zero config
+```
+
+### Cloudflare Workers
+
+```sh
+npx wrangler deploy --config wrangler.god.json    # → god.buildwithoracle.com
+```
+
+### Dev
+
+```sh
+npm install
+npm run dev               # vite on :5173, proxy /api + /ws → localhost:3456
+```
+
+## CI
+
+- **Build**: every PR + push to main/alpha (`build.yml`)
+- **Release**: auto-creates GitHub Release with `maw-ui-dist.tar.gz` on `v*` tag push
+
+## License
+
+[BUSL-1.1](LICENSE) — Nat Weerawan (ณัฐ วีระวรรณ์)
