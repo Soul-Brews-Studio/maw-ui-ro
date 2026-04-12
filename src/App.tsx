@@ -18,6 +18,13 @@ import { InboxOverlay } from "./components/InboxView";
 import { WorktreeView } from "./components/WorktreeView";
 import { ChatView } from "./components/ChatView";
 import { DashboardView } from "./components/DashboardView";
+import FederationView from "./components/FederationView";
+import { BoBFaceView } from "./components/BoBFaceView";
+import { BoardView } from "./components/BoardView";
+import { LoopsView } from "./components/LoopsView";
+import { JarvisView } from "./components/JarvisView";
+import { HallOfFameView } from "./components/HallOfFameView";
+import { IPadDashboard } from "./components/iPadDashboard";
 import { LoadingSkeleton } from "./components/LoadingSkeleton";
 import { ShortcutOverlay } from "./components/ShortcutOverlay";
 import { JumpOverlay } from "./components/JumpOverlay";
@@ -498,6 +505,54 @@ export function App() {
         <ChatView />
       </Layout>
     );
+  }
+
+  if (route === "federation") {
+    return (
+      <Layout activeView="federation" {...layoutProps}>
+        <FederationView />
+      </Layout>
+    );
+  }
+
+  if (route === "board") {
+    return (
+      <Layout activeView="board" {...layoutProps}>
+        <BoardView connected={connected} send={send} agents={filteredAgents} />
+      </Layout>
+    );
+  }
+
+  if (route === "loops") {
+    return (
+      <Layout activeView="loops" {...layoutProps}>
+        <LoopsView connected={connected} />
+      </Layout>
+    );
+  }
+
+  if (route === "jarvis") {
+    return (
+      <Layout activeView="jarvis" {...layoutProps}>
+        <JarvisView />
+      </Layout>
+    );
+  }
+
+  if (route === "fame") {
+    return (
+      <Layout activeView="fame" {...layoutProps}>
+        <HallOfFameView />
+      </Layout>
+    );
+  }
+
+  if (route === "bob") {
+    return <BoBFaceView />;
+  }
+
+  if (route === "ipad") {
+    return <IPadDashboard />;
   }
 
   // Fallback → office
