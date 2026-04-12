@@ -499,9 +499,11 @@ export function App() {
   }
 
   if (route === "dashboard") {
+    // Old DashboardView replaced by DashboardPro — the old one calls
+    // dead endpoints (/api/tokens → 410). File kept per Nothing is Deleted.
     return (
       <Layout activeView="dashboard" {...layoutProps}>
-        <DashboardView sessions={sessions} agents={agents} connected={connected} send={send} onSelectAgent={onSelectAgent} eventLog={eventLog} feedEvents={feedEvents} feedActive={feedActive} agentFeedLog={agentFeedLog} />
+        <DashboardPro />
       </Layout>
     );
   }
@@ -522,12 +524,10 @@ export function App() {
     );
   }
 
+  // #dashboard-pro redirects to #dashboard (same component now)
   if (route === "dashboard-pro") {
-    return (
-      <Layout activeView="dashboard-pro" {...layoutProps}>
-        <DashboardPro />
-      </Layout>
-    );
+    window.location.hash = "dashboard";
+    return null;
   }
 
   // board, loops, jarvis, fame, bob, ipad routes removed — no upstream backends.
