@@ -33,6 +33,13 @@ function App() {
   return (
     <div className="h-screen flex flex-col" style={{ background: "#020a18" }}>
       <header className="flex items-center gap-4 px-6 py-3 border-b" style={{ borderColor: "rgba(255,255,255,0.06)" }}>
+        <a
+          href="/"
+          className="text-white/30 hover:text-white/60 transition-colors text-sm"
+          title="Back to Office"
+        >
+          ←
+        </a>
         <div className="flex items-center gap-3">
           <span className="text-xl">{"\uD83D\uDD78"}</span>
           <h1 className="text-lg font-black tracking-tight" style={{ color: "#00f5d4" }}>Federation Mesh</h1>
