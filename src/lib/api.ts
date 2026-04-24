@@ -52,30 +52,7 @@ if (urlHost) {
  */
 export const isReadonlyBuild = import.meta.env.VITE_READONLY_BUILD === "true";
 
-// RO build: viewers often carry a `maw-host` localStorage entry from their own
-// local-dev session (e.g. `localhost:3457`). That leaks their machine's private
-// address into API URLs on ro.buildwithoracle.com and hits ERR_CONNECTION_REFUSED /
-// ERR_SSL_PROTOCOL_ERROR. Purge anything pointing at loopback or RFC1918 so the
-// RO site only ever talks to real public hosts.
-if (isReadonlyBuild) {
-  const stored = localStorage.getItem(STORAGE_KEY) || "";
-  if (/localhost|127\.|192\.168\.|10\.|::1/.test(stored)) {
-    localStorage.removeItem(STORAGE_KEY);
-  }
-}
-
 const hostParam = localStorage.getItem(STORAGE_KEY);
-
-/**
- * Compile-time read-only build flag.
- *
- * When `VITE_READONLY_BUILD=true` is set at build time (see `build:ro` npm
- * script + wrangler.ro.json), `isRemote` is forced true regardless of whether
- * the viewer has a stored host. This is the only mechanism the fork uses to
- * flip the UI into read-only mode — individual write paths are still guarded
- * by the existing `isRemote` checks inherited from the upstream repo.
- */
-export const isReadonlyBuild = import.meta.env.VITE_READONLY_BUILD === "true";
 
 /** Whether we're running in remote mode */
 export const isRemote = isReadonlyBuild || !!hostParam;
@@ -129,8 +106,16 @@ function resolveHost(): { httpProto: string; wsProto: string; host: string } | n
   if (hostParam.startsWith("http://")) {
     return { httpProto: "http:", wsProto: "ws:", host: hostParam.slice("http://".length).replace(/\/+$/, "") };
   }
-  // Bare host:port — default to https for backwards compatibility.
-  return { httpProto: "https:", wsProto: "wss:", host: hostParam.replace(/\/+$/, "") };
+  // Bare host:port — default protocol depends on target:
+  //   localhost / 127.* / ::1 → http (mkcert not required, and browsers allow
+  //     http://localhost from https pages as a "secure context" exception)
+  //   anything else → https (production tunnels expected, mkcert-backed LAN)
+  const stripped = hostParam.replace(/\/+$/, "");
+  const isLoopback = /^(localhost|127\.|\[?::1\]?)/.test(stripped);
+  if (isLoopback) {
+    return { httpProto: "http:", wsProto: "ws:", host: stripped };
+  }
+  return { httpProto: "https:", wsProto: "wss:", host: stripped };
 }
 
 /** Build full URL for fetch() calls */
