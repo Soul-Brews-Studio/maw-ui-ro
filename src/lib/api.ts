@@ -41,6 +41,29 @@ if (urlHost) {
   window.location.replace(url.toString());
 }
 
+/**
+ * Compile-time read-only build flag.
+ *
+ * When `VITE_READONLY_BUILD=true` is set at build time (see `build:ro` npm
+ * script + wrangler.ro.json), `isRemote` is forced true regardless of whether
+ * the viewer has a stored host. This is the only mechanism the fork uses to
+ * flip the UI into read-only mode — individual write paths are still guarded
+ * by the existing `isRemote` checks inherited from the upstream repo.
+ */
+export const isReadonlyBuild = import.meta.env.VITE_READONLY_BUILD === "true";
+
+// RO build: viewers often carry a `maw-host` localStorage entry from their own
+// local-dev session (e.g. `localhost:3457`). That leaks their machine's private
+// address into API URLs on ro.buildwithoracle.com and hits ERR_CONNECTION_REFUSED /
+// ERR_SSL_PROTOCOL_ERROR. Purge anything pointing at loopback or RFC1918 so the
+// RO site only ever talks to real public hosts.
+if (isReadonlyBuild) {
+  const stored = localStorage.getItem(STORAGE_KEY) || "";
+  if (/localhost|127\.|192\.168\.|10\.|::1/.test(stored)) {
+    localStorage.removeItem(STORAGE_KEY);
+  }
+}
+
 const hostParam = localStorage.getItem(STORAGE_KEY);
 
 /**
