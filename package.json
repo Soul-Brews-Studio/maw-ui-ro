@@ -1,12 +1,14 @@
 {
-  "name": "maw-ui",
+  "name": "maw-ui-ro",
   "version": "1.4.0",
   "private": true,
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview"
+    "build:ro": "VITE_READONLY_BUILD=true vite build",
+    "preview": "vite preview",
+    "deploy": "bun run build:ro && wrangler deploy --config wrangler.ro.json"
   },
   "dependencies": {
     "@monaco-editor/react": "^4.7.0",

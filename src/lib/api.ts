@@ -43,8 +43,19 @@ if (urlHost) {
 
 const hostParam = localStorage.getItem(STORAGE_KEY);
 
+/**
+ * Compile-time read-only build flag.
+ *
+ * When `VITE_READONLY_BUILD=true` is set at build time (see `build:ro` npm
+ * script + wrangler.ro.json), `isRemote` is forced true regardless of whether
+ * the viewer has a stored host. This is the only mechanism the fork uses to
+ * flip the UI into read-only mode — individual write paths are still guarded
+ * by the existing `isRemote` checks inherited from the upstream repo.
+ */
+export const isReadonlyBuild = import.meta.env.VITE_READONLY_BUILD === "true";
+
 /** Whether we're running in remote mode */
-export const isRemote = !!hostParam;
+export const isRemote = isReadonlyBuild || !!hostParam;
 
 /** Where the active host came from (always "config" or "local" after redirect) */
 export const hostSource: "config" | "local" =
