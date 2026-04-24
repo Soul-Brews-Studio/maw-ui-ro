@@ -41,8 +41,6 @@ if (urlHost) {
   window.location.replace(url.toString());
 }
 
-const hostParam = localStorage.getItem(STORAGE_KEY);
-
 /**
  * Compile-time read-only build flag.
  *
@@ -53,6 +51,20 @@ const hostParam = localStorage.getItem(STORAGE_KEY);
  * by the existing `isRemote` checks inherited from the upstream repo.
  */
 export const isReadonlyBuild = import.meta.env.VITE_READONLY_BUILD === "true";
+
+// RO build: viewers often carry a `maw-host` localStorage entry from their own
+// local-dev session (e.g. `localhost:3457`). That leaks their machine's private
+// address into API URLs on ro.buildwithoracle.com and hits ERR_CONNECTION_REFUSED /
+// ERR_SSL_PROTOCOL_ERROR. Purge anything pointing at loopback or RFC1918 so the
+// RO site only ever talks to real public hosts.
+if (isReadonlyBuild) {
+  const stored = localStorage.getItem(STORAGE_KEY) || "";
+  if (/localhost|127\.|192\.168\.|10\.|::1/.test(stored)) {
+    localStorage.removeItem(STORAGE_KEY);
+  }
+}
+
+const hostParam = localStorage.getItem(STORAGE_KEY);
 
 /** Whether we're running in remote mode */
 export const isRemote = isReadonlyBuild || !!hostParam;
