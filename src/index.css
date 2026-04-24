@@ -7,6 +7,19 @@ body {
   overflow-x: hidden;
 }
 
+/* Read-only build — nuke every input surface. Body gets the `.ro-mode` class
+ * in src/main.tsx when VITE_READONLY_BUILD=true. Each selector matches the
+ * write elements that live across the upstream UI. Using display:none (not
+ * visibility:hidden) so the layout collapses cleanly. !important because
+ * some components set inline styles. */
+.ro-mode input,
+.ro-mode textarea,
+.ro-mode select,
+.ro-mode form,
+.ro-mode [contenteditable="true"] {
+  display: none !important;
+}
+
 /* All clickable elements show hand cursor */
 button, [role="button"], a[href], summary { cursor: pointer; }
 
